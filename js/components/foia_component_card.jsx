@@ -6,20 +6,13 @@ import PropTypes from 'prop-types';
  */
 function Card({ card }) {
   const {
-    tag,
-    title,
-    subtitle,
-    url,
-    confidenceScore,
-    alt,
-    onClick,
+    agencyName, title, url, onClick, subtitle, confidenceScore,
   } = card;
 
   return (
-    <div className={`foia-component-card ${alt ? 'foia-component-card--alt' : ''}`}>
+    <div className="foia-component-card">
       <a href={url} onClick={onClick}>
-        {tag
-          && <span className="foia-component-card__tag">{tag}</span>}
+        <span className="foia-component-card__category">{agencyName}</span>
         <h2 className="foia-component-card__title">{title}</h2>
         {subtitle && <span className="foia-component-card__subtitle">{subtitle}</span>}
       </a>
@@ -36,12 +29,11 @@ function Card({ card }) {
 
 Card.propTypes = {
   card: PropTypes.shape({
-    tag: PropTypes.string,
+    agencyName: PropTypes.string.isRequired,
     title: PropTypes.string.isRequired,
     subtitle: PropTypes.string,
     url: PropTypes.string.isRequired,
     confidenceScore: PropTypes.string,
-    alt: PropTypes.string,
     onClick: PropTypes.func,
   }).isRequired,
 };
