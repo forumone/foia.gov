@@ -57,7 +57,7 @@ function Summary() {
           <h1><WizardHtml mid="lookingFor" /></h1>
           <blockquote>
             &ldquo;
-            {request.query || displayedTopic}
+            {displayedTopic || request.query}
             &rdquo;
           </blockquote>
 
@@ -116,7 +116,7 @@ function WizardLinks({ links }) {
       title: link.tag,
       subtitle: link.sentence,
       url: link.url,
-      confidenceScore: link.score.toFixed(4),
+      confidenceScore: link.confidence_score.toFixed(4),
     }
   ));
 
@@ -141,7 +141,6 @@ function WizardAgencies({ agencies }) {
 
       // this is actually the Department, but the card refers to it as agency
       tag: agency.parent ? agency.parent.name : '',
-      /* TODO Replace with actual department */
 
       // Polydelta has old URLs, update them as needed.
       url: agency.url.replace(/\/\?id=/, '/agency-search.html?id='),

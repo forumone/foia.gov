@@ -8,7 +8,7 @@
 import { create } from 'zustand';
 import { shallow } from 'zustand/shallow';
 import { fetchWizardInitData, fetchWizardPredictions } from '../util/wizard_api';
-import { convertSomeLinksToCards, urlParams } from '../util/wizard_helpers';
+import { convertSomeLinksToCards, normalizeScore, urlParams } from '../util/wizard_helpers';
 import allTopics from '../models/wizard_topics';
 import extraMessages from '../models/wizard_extra_messages';
 
@@ -156,6 +156,23 @@ const useRawWizardStore = create((
     set({ ready: true, ui });
   };
 
+  /**
+   * @param {WizardVars} state
+   * @returns {WizardVars}
+   */
+  function getJumpBackState(state) {
+    return {
+      ...initialWizardState,
+      activity: { type: 'query' },
+      // Preserve loaded stuff
+      allTopics: state.allTopics,
+      ui: state.ui,
+      ready: state.ready,
+    };
+  }
+
+  const jumpBackToQueryPage = () => set((state) => getJumpBackState(state));
+
   const nextPage = () => set((state) => {
     const { activity, answerIdx, displayedTopic } = state;
 
@@ -166,6 +183,10 @@ const useRawWizardStore = create((
       }
 
       const answer = activity.answers[answerIdx];
+      if (answer.next.type === 'start-over') {
+        return getJumpBackState(state);
+      }
+
       return withCapturedHistory({
         answerIdx: null,
         activity: answer.next,
@@ -188,29 +209,70 @@ const useRawWizardStore = create((
     });
   });
 
-  const jumpBackToQueryPage = () => set((state) => ({
-    ...initialWizardState,
-    activity: { type: 'query' },
-    // Preserve loaded stuff
-    allTopics: state.allTopics,
-    ui: state.ui,
-    ready: state.ready,
-  }));
-
   /** @type {WizardActions['submitRequest']} */
   const submitRequest = async ({ query, topic }) => {
     let isError = false;
     let recommendedAgencies = [];
     let recommendedLinks = [];
+    let effectiveTopic = topic;
 
-    if (query && !topic) {
+    if (query && !effectiveTopic) {
       nudgeLoading(1);
       await fetchWizardPredictions(query)
         .then((data) => {
-          recommendedAgencies = data.model_output.agency_finder_predictions[0]
-            .filter((agency) => agency.confidence_score >= CONFIDENCE_THRESHOLD_AGENCIES);
+          // If a predefined flow is found, we switch to it, but we'll go ahead and populate
+          // the links and agencies anyway.
+          const { flow } = data.model_output.predefined_flow || {};
+          if (typeof flow === 'string') {
+            effectiveTopic = allTopics.find(
+              (el) => el.title.toUpperCase() === flow.toUpperCase(),
+            );
+          }
+
+          // Used to avoid agency duplicates.
+          const ids = new Set();
+
+          // If name match, always include it.
+          recommendedAgencies = (data.model_output.agency_name_match || [])
+            .map((agency) => {
+              ids.add(agency.id);
+              // Show at the top.
+              agency.confidence_score = 9999;
+              return agency;
+            });
+
+          // Match from mission if above threshold.
+          recommendedAgencies.push(
+            ...data.model_output.agency_mission_match
+              .map(normalizeScore)
+              .filter((agency) => {
+                if (ids.has(agency.id) || agency.confidence_score < CONFIDENCE_THRESHOLD_AGENCIES) {
+                  return false;
+                }
+                ids.add(agency.id);
+                return true;
+              }),
+          );
+
+          // Match from finder if above threshold.
+          recommendedAgencies.push(
+            ...data.model_output.agency_finder_predictions[0]
+              .map(normalizeScore)
+              .filter((agency) => {
+                if (ids.has(agency.id) || agency.confidence_score < CONFIDENCE_THRESHOLD_AGENCIES) {
+                  return false;
+                }
+                ids.add(agency.id);
+                return true;
+              }),
+          );
+
+          // DESC score order
+          recommendedAgencies.sort((a, b) => b.confidence_score - a.confidence_score);
+
           recommendedLinks = data.model_output.freqdoc_predictions
-            .filter((link) => link.score >= CONFIDENCE_THRESHOLD_LINKS);
+            .map(normalizeScore)
+            .filter((link) => link.confidence_score >= CONFIDENCE_THRESHOLD_LINKS);
         })
         .catch((err) => {
           console.error(err);
@@ -220,13 +282,13 @@ const useRawWizardStore = create((
     }
 
     set(withCapturedHistory({
-      activity: topic ? topic.journey : { type: 'summary' },
-      displayedTopic: topic ? topic.title : '',
+      activity: effectiveTopic ? effectiveTopic.journey : { type: 'summary' },
+      displayedTopic: effectiveTopic ? effectiveTopic.title : '',
       query,
       recommendedLinks,
       recommendedAgencies,
       isError,
-      userTopic: topic,
+      userTopic: effectiveTopic,
     }));
   };
 

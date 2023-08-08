@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 /**
  * @param {string} titleMid
  * @param {WizardAnswer[]} answers
@@ -12,7 +14,7 @@ export function question(titleMid, answers, addendumMid) {
 
 /**
  * @param {string} titleMid
- * @param {WizardQuestion | WizardContinue | WizardSummary} next
+ * @param {WizardAnswer['next']} next
  * @param {string=} newDisplayedTopic
  * @returns {WizardAnswer}
  */
@@ -23,9 +25,9 @@ export function answer(titleMid, next, newDisplayedTopic) {
 /**
  * @param {string} titleMid
  * @param {object} yesNo
- * @param {WizardQuestion | WizardContinue | WizardSummary} yesNo.yes
+ * @param {WizardAnswer['next']} yesNo.yes
  * @param {string=} yesNo.topicIfYes
- * @param {WizardQuestion | WizardContinue | WizardSummary} yesNo.no
+ * @param {WizardAnswer['next']} yesNo.no
  * @param {string=} yesNo.topicIfNo
  * @param {string=} addendumMid
  * @returns {WizardQuestion}
@@ -77,13 +79,65 @@ export function convertSomeLinksToCards(html) {
       // No modification
       return m0;
     }
+
+    function extClass() {
+    // If the link goes outside the foia domain, add an extra class name
+      return (linkOpenTag.startsWith('<a href="https://www.foia.gov')) ? '' : 'foia-component-card--alt--ext';
+    }
+
     return `
-      <div class="foia-component-card">
+      <div class="foia-component-card foia-component-card--alt ${extClass()}">
         ${linkOpenTag}
-          <span class="foia-component-card__tag"></span>
           <h2 class="foia-component-card__title">${linkInnerHtml}</h2>
         </a>
       </div>
     `;
   });
+}
+
+/**
+ * Ensure obj.confidence_score exists. Move from obj.score or set as 0;
+ *
+ * @param {object} obj
+ * @returns {object}
+ */
+export function normalizeScore(obj) {
+  const { score, confidence_score, ...rest } = obj;
+
+  if (typeof confidence_score === 'number') {
+    return { confidence_score, ...rest };
+  }
+
+  if (typeof score === 'number') {
+    return { confidence_score: score, ...rest };
+  }
+
+  console.warn('obj missing confidence_score', obj);
+  return { confidence_score: 0, ...rest };
+}
+
+export function useWait(waitMs) {
+  const [hasWaited, setHasWaited] = useState(false);
+  useEffect(() => {
+    if (hasWaited) {
+      return () => 0;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setHasWaited(true);
+    }, waitMs);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [hasWaited]);
+
+  function reset() {
+    setHasWaited(false);
+  }
+
+  return {
+    hasWaited,
+    reset,
+  };
 }

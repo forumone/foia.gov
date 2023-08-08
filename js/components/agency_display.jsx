@@ -3,13 +3,20 @@ import PropTypes from 'prop-types';
 
 import AgencyComponentPreview from 'components/agency_component_preview';
 import AgencyPreview from 'components/agency_preview';
+import AgencyRequestWritingTips from 'components/agency_request_writing_tips';
 import agencyComponentStore from '../stores/agency_component';
 import { pushUrl } from '../util/use_url';
+import { titlePrefix } from '../util/dom';
 import { requestActions } from '../actions';
 
 function jumpToUrl(id, type) {
   const params = new URLSearchParams({ id, type });
   pushUrl(`?${params}`);
+}
+
+function returnUrl(id, type) {
+  const params = new URLSearchParams({ id, type });
+  return `?${params}`;
 }
 
 /**
@@ -27,7 +34,11 @@ class AgencyDisplay extends Component {
       agencyComponentsForAgency: null,
       notFound: false,
       isCentralized: false,
+      showTips: false,
+      destinationHref: null,
     };
+    this.setShowTips = this.setShowTips.bind(this);
+    this.setDestinationHref = this.setDestinationHref.bind(this);
   }
 
   componentDidMount() {
@@ -40,6 +51,7 @@ class AgencyDisplay extends Component {
 
   checkLoaded() {
     const { id, type, agencyFinderDataComplete } = this.props;
+
     if (!agencyFinderDataComplete) {
       return;
     }
@@ -80,7 +92,20 @@ class AgencyDisplay extends Component {
     }
   }
 
+  setDestinationHref(url) {
+    this.setState({
+      destinationHref: url,
+    });
+  }
+
+  setShowTips(boolean) {
+    this.setState({
+      showTips: boolean,
+    });
+  }
+
   setStateForAgency(agency, agencyComponentsForAgency) {
+    document.title = titlePrefix + agency.name;
     this.setState({
       agency,
       agencyComponent: null,
@@ -92,6 +117,8 @@ class AgencyDisplay extends Component {
   }
 
   setStateForComponent(agencyComponent, isCentralized = false) {
+    const title = isCentralized ? agencyComponent.agency.name : agencyComponent.title;
+    document.title = titlePrefix + title;
     this.setState({
       agency: null,
       agencyComponent,
@@ -109,6 +136,8 @@ class AgencyDisplay extends Component {
     const agencyChange = (agencyComponent) => {
       // We're going to push a URL so checkLoaded() can handle it
       if (agencyComponent.type === 'agency_component') {
+        const destinationHref = returnUrl(agencyComponent.id, 'component');
+        this.setDestinationHref(destinationHref);
         jumpToUrl(agencyComponent.id, 'component');
         return;
       }
@@ -116,17 +145,22 @@ class AgencyDisplay extends Component {
       const agency = agencyComponentStore.getAgency(agencyComponent.id);
 
       // Treat centralized agencies as components
-      if (agency.isCentralized()) {
+      if (agency && agency.isCentralized()) {
         const component = this.props.agencyComponents.find((c) => c.agency.id === agency.id);
+        const destinationHref = returnUrl(component.id, 'component');
+        this.setDestinationHref(destinationHref);
         jumpToUrl(component.id, 'component');
         return;
       }
 
-      jumpToUrl(agency.id, 'agency');
+      if (agency) {
+        const destinationHref = returnUrl(agency.id, 'agency');
+        this.setDestinationHref(destinationHref);
+      }
     };
 
     const {
-      agency, agencyComponent, agencyComponentsForAgency, isCentralized, notFound,
+      agency, agencyComponent, agencyComponentsForAgency, isCentralized, notFound, destinationHref, showTips,
     } = this.state;
 
     const searchPath = '/agency-search.html';
@@ -149,19 +183,27 @@ class AgencyDisplay extends Component {
 
         {notFound && (<h2>This agency could not be found.</h2>)}
 
-        {agencyComponent && (
-          <AgencyComponentPreview
-            agencyComponent={agencyComponent.toJS()}
-            isCentralized={isCentralized}
-            onAgencySelect={agencyChange}
-          />
-        )}
-        {agency && (
-          <AgencyPreview
-            agency={agency}
-            agencyComponentsForAgency={agencyComponentsForAgency}
-            onAgencySelect={agencyChange}
-          />
+        { showTips ? (
+          <AgencyRequestWritingTips destinationHref={destinationHref} />
+        ) : (
+          <>
+            {agencyComponent && (
+              <AgencyComponentPreview
+                agencyComponent={agencyComponent.toJS()}
+                isCentralized={isCentralized}
+                onAgencySelect={agencyChange}
+                setDestinationHref={this.setDestinationHref}
+                setShowTips={this.setShowTips}
+              />
+            )}
+            {agency && (
+              <AgencyPreview
+                agency={agency}
+                agencyComponentsForAgency={agencyComponentsForAgency}
+                onAgencySelect={agencyChange}
+              />
+            )}
+          </>
         )}
       </div>
     );
