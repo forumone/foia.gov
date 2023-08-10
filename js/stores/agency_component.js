@@ -81,7 +81,7 @@ class AgencyComponentStore extends Store {
         .forEach((agency) => {
           centralized[agency.isCentralized() ? 'centralized' : 'multiComponent'].push(agency.name);
         });
-      console.log({ agencies: centralized });
+      console.warn({ agencies: centralized });
     }
 
     return this.state.agencies
