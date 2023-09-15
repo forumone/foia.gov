@@ -101,7 +101,7 @@ export function convertSomeLinksToCards(html) {
       </a>
     `;
 
-    if (linkOpenTag.includes('class="square')) {
+    if (linkOpenTag.includes('class="square"')) {
       result.replace('class="square"', `class="${classes.join(' ')}"`);
     } else {
       result.replace('<a ', `<a class="${classes.join(' ')}" `);
