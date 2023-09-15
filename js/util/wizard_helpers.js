@@ -95,19 +95,19 @@ export function convertSomeLinksToCards(html) {
       localChecks.some((check) => linkOpenTag.includes(check)) ? '' : 'foia-component-card--ext',
     ];
 
-    if (linkOpenTag.includes('class="square')) {
-      String(linkOpenTag);
-      linkOpenTag.replace('class="square"', `class="${classes.join(' ')}"`);
-    } else {
-      String(linkOpenTag);
-      linkOpenTag.replace('<a ', `<a class="${classes.join(' ')}" `);
-    }
-
-    return `
+    const result = `
       ${linkOpenTag}
         <h2 class="foia-component-card__title">${linkInnerHtml}</h2>
       </a>
     `;
+
+    if (linkOpenTag.includes('class="square')) {
+      result.replace('class="square"', `class="${classes.join(' ')}"`);
+    } else {
+      result.replace('<a ', `<a class="${classes.join(' ')}" `);
+    }
+
+    return result;
   });
 }
 
