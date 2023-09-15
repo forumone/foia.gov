@@ -107,6 +107,14 @@ export function convertSomeLinksToCards(html) {
         <h2 class="foia-component-card__title">${linkInnerHtml}</h2>
       </a>
     `;
+
+    if (linkOpenTag.includes('class="square"')) {
+      result.replace('class="square"', `class="${classes.join(' ')}"`);
+    } else {
+      result.replace('<a ', `<a class="${classes.join(' ')}" `);
+    }
+
+    return result;
   });
 }
 
