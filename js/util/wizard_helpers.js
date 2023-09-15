@@ -95,8 +95,15 @@ export function convertSomeLinksToCards(html) {
       localChecks.some((check) => linkOpenTag.includes(check)) ? '' : 'foia-component-card--ext',
     ];
 
-    const result = `
-      ${linkOpenTag}
+    let linkOpenTagNew;
+    if (linkOpenTag.includes('class="square')) {
+      linkOpenTagNew = linkOpenTag.replace('class="square"', `class="${classes.join(' ')}"`);
+    } else {
+      linkOpenTagNew = linkOpenTag.replace('<a ', `<a class="${classes.join(' ')}" `);
+    }
+
+    return `
+      ${linkOpenTagNew}
         <h2 class="foia-component-card__title">${linkInnerHtml}</h2>
       </a>
     `;
