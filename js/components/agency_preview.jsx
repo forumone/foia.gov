@@ -15,6 +15,7 @@ function AgencyPreview({ agency, agencyComponentsForAgency, onAgencySelect }) {
   const description = agency.mission();
   return (
     <div className="agency-preview usa-grid-full use-dark-icons">
+      <span>&nbsp;</span>
       <div className="usa-width-one-whole">
         <h3>{agency.name}</h3>
       </div>

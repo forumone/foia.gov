@@ -20,6 +20,7 @@ function AgencyComponentPreview({
 
   return (
     <div className="agency-preview usa-grid-full use-dark-icons">
+      <span>&nbsp;</span>
       <div className="usa-width-one-whole">
         {
           !isCentralized && (
